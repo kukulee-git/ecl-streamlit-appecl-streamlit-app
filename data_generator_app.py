@@ -375,6 +375,11 @@ with tab4:
 # Tab 5: 时间序列数据
 # ============================================================
 with tab5:
+    if st.button("📊 生成时间序列数据", key="btn_timeseries"):
+        import pandas as pd   # 重新导入（如果被覆盖过，这里会恢复）
+
+        # ... 剩下的生成逻辑不变 ...
+        ts_data = pd.DataFrame(ts_data_list)
     st.header("⏰ 时间序列客户数据")
     st.markdown("用于**客户行为预测**和**时序分析**")
     
