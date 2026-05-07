@@ -7,30 +7,34 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.neural_network import MLPRegressor
 import warnings
 warnings.filterwarnings('ignore')
-
-# ---------- 安全读取 CSV 函数 ----------
+import matplotlib.pyplot as plt
+plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  # Windows
+# ---------- 安全读取 CSV 的函数 ----------
 def safe_read_csv(file, show_error=True):
+    """安全读取CSV文件，处理空文件和无效内容"""
     if file is None:
         if show_error:
-            st.error("❌ 未选择文件")
+            st.error("❌ 没有文件，请先上传CSV文件")
         return None
     try:
-        file.seek(0, 2)
+        # 检查文件大小
+        file.seek(0, 2)  # 末尾
         size = file.tell()
-        file.seek(0)
+        file.seek(0)      # 回到开头
         if size == 0:
             if show_error:
-                st.error("❌ 上传的文件为空")
+                st.error("❌ 上传的文件为空，请重新上传有效的CSV文件")
             return None
+        # 尝试读取
         df = pd.read_csv(file)
         if df.empty:
             if show_error:
-                st.error("❌ CSV 文件中没有数据行")
+                st.error("❌ CSV文件中没有数据行")
             return None
         return df
     except Exception as e:
         if show_error:
-            st.error(f"❌ 读取失败：{str(e)}")
+            st.error(f"❌ 读取文件失败：{str(e)}")
         return None
 
 # 页面配置
@@ -64,7 +68,7 @@ def generate_demo_data():
     missing_df.loc[mask, '客户收入'] = np.nan
     missing_df.to_csv('missing_data.csv', index=False, encoding='utf-8-sig')
 
-    dates = pd.date_range('2015-01-01', periods=40, freq='QE')
+    dates = pd.date_range('2015-01-01', periods=40, freq='QE')  # 兼容新版pandas
     macro_df = pd.DataFrame({
         '日期': dates,
         'GDP增长率': 3 + np.sin(np.linspace(0, 4*np.pi, 40)) * 1.5 + np.random.normal(0, 0.2, 40),
@@ -93,7 +97,7 @@ use_demo_data = st.sidebar.checkbox("使用示例数据", value=True)
 uploaded_file = st.sidebar.file_uploader("上传信贷数据 (CSV格式)", type=["csv"], help="请上传非空、UTF-8编码的CSV文件")
 contamination = st.sidebar.slider("异常值敏感度", 0.01, 0.2, 0.05, step=0.01)
 fill_algorithm = st.sidebar.selectbox("缺失值填补算法", ["随机森林回归", "神经网络(MLP)"])
-lstm_epochs = st.sidebar.slider("LSTM训练轮数", 10, 100, 30, step=10, disabled=True, help="LSTM功能正在优化中")
+lstm_epochs = st.sidebar.slider("LSTM训练轮数 (epochs)", 10, 100, 30, step=10, disabled=True, help="LSTM功能正在优化中")
 
 if st.sidebar.button("🔄 重新运行"):
     st.cache_data.clear()
@@ -142,18 +146,16 @@ with tab1:
     df_out['异常标记'] = iso_forest.fit_predict(scaled)
     outliers = df_out[df_out['异常标记'] == -1]
     
-    # 图表使用英文标签
     fig, axes = plt.subplots(1, 2, figsize=(12, 4))
     axes[0].boxplot(df_out[feature_x].dropna(), patch_artist=True, boxprops=dict(facecolor='lightblue'))
-    axes[0].set_title(f'Boxplot of {feature_x}')
-    axes[0].set_ylabel(feature_x)
+    axes[0].set_title(f'{feature_x} 箱线图')
     
     normal = df_out[df_out['异常标记'] == 1]
-    axes[1].scatter(normal[feature_x], normal[feature_y], c='blue', label='Normal', alpha=0.6)
-    axes[1].scatter(outliers[feature_x], outliers[feature_y], c='red', label='Outlier', alpha=0.8, marker='x')
+    axes[1].scatter(normal[feature_x], normal[feature_y], c='blue', label='正常', alpha=0.6)
+    axes[1].scatter(outliers[feature_x], outliers[feature_y], c='red', label='异常', alpha=0.8, marker='x')
     axes[1].set_xlabel(feature_x)
     axes[1].set_ylabel(feature_y)
-    axes[1].set_title(f'Outlier Distribution (sensitivity={contamination})')
+    axes[1].set_title(f'异常值分布 (敏感度={contamination})')
     axes[1].legend()
     plt.tight_layout()
     
@@ -214,17 +216,11 @@ with tab2:
             test_copy[target_col] = model.predict(test[feature_cols])
             filled = pd.concat([train, test_copy]).sort_index()
     
-    # 图表使用英文标签
     fig, axes = plt.subplots(1, 2, figsize=(12, 4))
     axes[0].hist(train[target_col].dropna(), bins=30, alpha=0.7, color='blue', edgecolor='black')
-    axes[0].set_title(f'Before Imputation - {target_col}')
-    axes[0].set_xlabel(target_col)
-    axes[0].set_ylabel('Frequency')
-    
+    axes[0].set_title(f'填补前 - {target_col}')
     axes[1].hist(filled[target_col], bins=30, alpha=0.7, color='orange', edgecolor='black')
-    axes[1].set_title(f'After Imputation ({fill_algorithm})')
-    axes[1].set_xlabel(target_col)
-    axes[1].set_ylabel('Frequency')
+    axes[1].set_title(f'填补后 - {fill_algorithm}')
     plt.tight_layout()
     
     col1, col2 = st.columns(2)
@@ -234,7 +230,7 @@ with tab2:
         st.pyplot(fig)
 
 # ============================================================
-# Tab 3: LSTM 预测（无 TensorFlow 版本，图表英文）
+# Tab 3: LSTM 预测（无 TensorFlow 版本）
 # ============================================================
 with tab3:
     st.header("📈 LSTM时序预测")
@@ -260,7 +256,7 @@ with tab3:
     st.markdown("---")
     st.subheader("📊 示例：宏观经济指标预测")
     
-    # 兼容日期生成（图表英文）
+    # 兼容不同 pandas 版本的日期生成
     try:
         dates = pd.date_range('2020-01-01', periods=20, freq='QE')
     except:
@@ -268,18 +264,17 @@ with tab3:
         dates = dates[dates.month.isin([1,4,7,10])][:20]
     
     example_data = pd.DataFrame({
-        'Date': dates[:20],
-        'GDP Growth': [3.2,2.8,3.5,4.0,3.8,3.2,2.9,3.3,3.6,4.1,3.9,3.4,3.1,3.5,3.8,4.2,4.0,3.6,3.3,3.7][:20],
-        'CPI': [2.1,2.3,2.0,1.8,2.2,2.5,2.7,2.4,2.1,1.9,2.3,2.6,2.8,2.5,2.2,2.0,2.4,2.7,2.9,2.6][:20]
+        '日期': dates[:20],
+        'GDP增长率': [3.2, 2.8, 3.5, 4.0, 3.8, 3.2, 2.9, 3.3, 3.6, 4.1, 3.9, 3.4, 3.1, 3.5, 3.8, 4.2, 4.0, 3.6, 3.3, 3.7][:20],
+        'CPI': [2.1, 2.3, 2.0, 1.8, 2.2, 2.5, 2.7, 2.4, 2.1, 1.9, 2.3, 2.6, 2.8, 2.5, 2.2, 2.0, 2.4, 2.7, 2.9, 2.6][:20]
     })
-    st.line_chart(example_data.set_index('Date'))
-    st.caption("上图：示例数据趋势（X轴：日期，Y轴：指标数值）")
+    st.line_chart(example_data.set_index('日期'))
     
     st.markdown("""
     ### 💡 使用方法
-    1. 准备包含日期列和数值列的 CSV 文件
+    1. 准备包含日期列和数值列的CSV文件
     2. 在侧边栏上传数据
-    3. LSTM 模型将自动训练并预测
+    3. LSTM模型将自动训练并预测
     
     ### 📁 数据格式示例
     | 日期 | GDP增长率 | CPI |
@@ -287,7 +282,7 @@ with tab3:
     | 2020-01-01 | 3.2 | 2.1 |
     
     ---
-    **💡 提示**：完整版 LSTM 需要 TensorFlow 支持，当前展示模拟预测效果。
+    **💡 提示**：完整版LSTM需要TensorFlow支持，当前展示模拟预测效果。
     """)
     
     st.subheader("📈 模拟预测效果展示")
@@ -298,12 +293,11 @@ with tab3:
         forecast_dates = forecast_dates[forecast_dates.month.isin([1,4,7,10])][:8]
     
     forecast_data = pd.DataFrame({
-        'Date': forecast_dates,
-        'Actual': [3.5,3.3,3.6,3.8,3.7,3.9,4.0,3.8],
-        'Predicted': [3.5,3.4,3.5,3.7,3.8,3.8,3.9,3.9]
+        '日期': forecast_dates,
+        '实际值': [3.5, 3.3, 3.6, 3.8, 3.7, 3.9, 4.0, 3.8],
+        '预测值': [3.5, 3.4, 3.5, 3.7, 3.8, 3.8, 3.9, 3.9]
     })
-    st.line_chart(forecast_data.set_index('Date'))
-    st.caption("上图：模拟预测效果（蓝色：实际值，红色：预测值）")
+    st.line_chart(forecast_data.set_index('日期'))
 
 # ============================================================
 # Tab 4: 多源数据融合
@@ -335,14 +329,16 @@ with tab4:
             st.stop()
         
         try:
+            # 尝试按公共列合并
             common_cols = set(df1.columns) & set(df2.columns) & set(df3.columns)
             if '客户ID' in common_cols:
                 merged = df1.merge(df2, on='客户ID', how='outer')
                 merged = merged.merge(df3, on='客户ID', how='outer')
                 st.info("🔗 按「客户ID」列合并")
             elif '日期' in common_cols:
-                for d in [df1, df2, df3]:
-                    d['日期'] = pd.to_datetime(d['日期'])
+                df1['日期'] = pd.to_datetime(df1['日期'])
+                df2['日期'] = pd.to_datetime(df2['日期'])
+                df3['日期'] = pd.to_datetime(df3['日期'])
                 merged = df1.merge(df2, on='日期', how='outer')
                 merged = merged.merge(df3, on='日期', how='outer')
                 st.info("🔗 按「日期」列合并")
