@@ -6,13 +6,15 @@ from pylab import*
 mpl.rcParams['font.sans-serif']=['SimHei']
 
 import matplotlib.pyplot as plt
+plt.rcParams['font.sans-serif'] = ['SimHei']
+plt.rcParams['axes.unicode_minus'] = False
+
 from sklearn.ensemble import IsolationForest, RandomForestRegressor
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.neural_network import MLPRegressor
 import warnings
 warnings.filterwarnings('ignore')
-import matplotlib.pyplot as plt
-plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  # Windows
+
 # ---------- 安全读取 CSV 的函数 ----------
 def safe_read_csv(file, show_error=True):
     """安全读取CSV文件，处理空文件和无效内容"""
