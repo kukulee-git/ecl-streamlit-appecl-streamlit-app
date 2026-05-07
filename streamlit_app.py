@@ -1,6 +1,10 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+
+from pylab import*
+mpl.rcParams['font.sans-serif']=['SimHei']
+
 import matplotlib.pyplot as plt
 from sklearn.ensemble import IsolationForest, RandomForestRegressor
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
