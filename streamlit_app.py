@@ -7,9 +7,8 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.neural_network import MLPRegressor
 import warnings
 warnings.filterwarnings('ignore')
-# 设置 matplotlib 中文字体
-plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans', 'Arial Unicode MS']  # 用来正常显示中文标签
-plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
+import matplotlib.pyplot as plt
+plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']  # Windows
 # ---------- 安全读取 CSV 的函数 ----------
 def safe_read_csv(file, show_error=True):
     """安全读取CSV文件，处理空文件和无效内容"""
