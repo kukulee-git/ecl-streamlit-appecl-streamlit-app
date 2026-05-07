@@ -73,7 +73,7 @@ with tab1:
         - 🔴 信用评分过低 (<300)
         """)
     
-    if st.button("📊 生成信贷客户数据", key="btn_customer"):
+    if st.button("📊 生成信贷客户数据", key="gen_customer_data"):
         with st.spinner("正在生成数据..."):
             # 生成客户数据
             customer_data = pd.DataFrame({
@@ -166,7 +166,7 @@ with tab2:
         - 抵押品价值_万
         """)
     
-    if st.button("📊 生成缺失值演示数据", key="btn_missing"):
+    if st.button("📊 生成缺失值演示数据", key="gen_missing_data"):
         with st.spinner(f"正在生成数据（缺失率{missing_rate}%）..."):
             # 先生成基础数据
             base_data = pd.DataFrame({
@@ -232,7 +232,7 @@ with tab3:
         - 房地产价格指数
         """)
     
-    if st.button("📊 生成宏观经济数据", key="btn_macro"):
+    if st.button("📊 生成宏观经济数据", key="gen_macro_data"):
         with st.spinner("正在生成宏观经济数据..."):
             start_date = datetime(start_year, 1, 1)
             dates = [start_date + timedelta(days=90*i) for i in range(quarters)]
@@ -326,7 +326,7 @@ with tab4:
         - 监管关注度 (0-10)
         """)
     
-    if st.button("📊 生成外部舆情数据", key="btn_external"):
+    if st.button("📊 生成外部舆情数据", key="gen_external_data"):
         with st.spinner("正在生成舆情数据..."):
             if not selected_industries:
                 selected_industries = industries
@@ -375,11 +375,6 @@ with tab4:
 # Tab 5: 时间序列数据
 # ============================================================
 with tab5:
-    if st.button("📊 生成时间序列数据", key="btn_timeseries"):
-        import pandas as pd   # 重新导入（如果被覆盖过，这里会恢复）
-
-        # ... 剩下的生成逻辑不变 ...
-        ts_data = pd.DataFrame(ts_data_list)
     st.header("⏰ 时间序列客户数据")
     st.markdown("用于**客户行为预测**和**时序分析**")
     
@@ -398,7 +393,7 @@ with tab5:
         - 适合LSTM时序预测
         """)
     
-    if st.button("📊 生成时间序列数据", key="btn_timeseries"):
+    if st.button("📊 生成时间序列数据", key="gen_timeseries_data"):
         with st.spinner(f"正在生成 {n_customers_ts} 个客户 × {months} 个月的数据..."):
             start_date = datetime(2022, 1, 1)
             dates_ts = [start_date + timedelta(days=30*i) for i in range(months)]
@@ -417,16 +412,16 @@ with tab5:
                     expense = income * np.random.uniform(0.3, 0.8)
                     
                     # 违约概率随时间变化
-                    pd = base_risk + 0.02 * np.sin(month * 2 * np.pi / 12) + np.random.normal(0, 0.005)
-                    pd = max(0.001, min(0.3, pd))
+                    pd_val = base_risk + 0.02 * np.sin(month * 2 * np.pi / 12) + np.random.normal(0, 0.005)
+                    pd_val = max(0.001, min(0.3, pd_val))
                     
                     ts_data_list.append({
                         '客户ID': f'TS_CUST{str(cust_id).zfill(4)}',
                         '日期': date,
                         '月收入_万': round(income, 2),
                         '月支出_万': round(expense, 2),
-                        '违约概率': round(pd, 4),
-                        '是否违约': 1 if np.random.random() < pd else 0
+                        '违约概率': round(pd_val, 4),
+                        '是否违约': 1 if np.random.random() < pd_val else 0
                     })
             
             ts_data = pd.DataFrame(ts_data_list)
