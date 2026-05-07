@@ -1,36 +1,32 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-
-from pylab import*
-mpl.rcParams['font.sans-serif']=['SimHei']
-
 import matplotlib.pyplot as plt
-plt.rcParams['font.family'] = 'Heiti TC'  # 替换为你选择的字体
-
 from sklearn.ensemble import IsolationForest, RandomForestRegressor
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.neural_network import MLPRegressor
 import warnings
 warnings.filterwarnings('ignore')
 
+# 设置 matplotlib 中文字体（仅用于界面中可能的中文，图表文字已改为英文，此处保留以防其他部分需要）
+plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans', 'Arial Unicode MS']
+plt.rcParams['axes.unicode_minus'] = False
+
 # ---------- 安全读取 CSV 的函数 ----------
 def safe_read_csv(file, show_error=True):
     """安全读取CSV文件，处理空文件和无效内容"""
     if file is None:
         if show_error:
-            st.error("❌ 没有文件，请先上传CSV文件")
+            st.error("❌ 没有上传文件，请先上传CSV文件")
         return None
     try:
-        # 检查文件大小
-        file.seek(0, 2)  # 末尾
+        file.seek(0, 2)
         size = file.tell()
-        file.seek(0)      # 回到开头
+        file.seek(0)
         if size == 0:
             if show_error:
                 st.error("❌ 上传的文件为空，请重新上传有效的CSV文件")
             return None
-        # 尝试读取
         df = pd.read_csv(file)
         if df.empty:
             if show_error:
@@ -53,30 +49,30 @@ def generate_demo_data():
     n = 200
     
     outlier_df = pd.DataFrame({
-        '客户ID': [f'ECL{i:03d}' for i in range(n)],
-        '违约率': np.random.uniform(0, 0.15, n),
-        '抵押品价值': np.random.uniform(50, 300, n),
-        '信贷额度': np.random.uniform(100, 600, n)
+        'CustomerID': [f'ECL{i:03d}' for i in range(n)],
+        'Default Rate': np.random.uniform(0, 0.15, n),
+        'Collateral Value': np.random.uniform(50, 300, n),
+        'Credit Limit': np.random.uniform(100, 600, n)
     })
-    outlier_df.loc[5, '违约率'] = 1.2
-    outlier_df.loc[10, '抵押品价值'] = -50
+    outlier_df.loc[5, 'Default Rate'] = 1.2
+    outlier_df.loc[10, 'Collateral Value'] = -50
     outlier_df.to_csv('outlier_data.csv', index=False, encoding='utf-8-sig')
 
     missing_df = pd.DataFrame({
-        '客户ID': [f'ECL{i:03d}' for i in range(n)],
-        '客户收入': np.random.normal(50, 15, n),
-        '历史违约记录': np.random.choice([0,1], n, p=[0.9,0.1]),
-        '行业景气指数': np.random.uniform(80, 120, n),
-        '信贷额度': np.random.uniform(100, 600, n)
+        'CustomerID': [f'ECL{i:03d}' for i in range(n)],
+        'Customer Income': np.random.normal(50, 15, n),
+        'Historical Default': np.random.choice([0,1], n, p=[0.9,0.1]),
+        'Industry Climate Index': np.random.uniform(80, 120, n),
+        'Credit Limit': np.random.uniform(100, 600, n)
     })
     mask = np.random.random(n) < 0.1
-    missing_df.loc[mask, '客户收入'] = np.nan
+    missing_df.loc[mask, 'Customer Income'] = np.nan
     missing_df.to_csv('missing_data.csv', index=False, encoding='utf-8-sig')
 
-    dates = pd.date_range('2015-01-01', periods=40, freq='QE')  # 兼容新版pandas
+    dates = pd.date_range('2015-01-01', periods=40, freq='QE')
     macro_df = pd.DataFrame({
-        '日期': dates,
-        'GDP增长率': 3 + np.sin(np.linspace(0, 4*np.pi, 40)) * 1.5 + np.random.normal(0, 0.2, 40),
+        'Date': dates,
+        'GDP Growth Rate': 3 + np.sin(np.linspace(0, 4*np.pi, 40)) * 1.5 + np.random.normal(0, 0.2, 40),
         'CPI': 2 + np.cos(np.linspace(0, 3*np.pi, 40)) * 0.8 + np.random.normal(0, 0.1, 40)
     })
     macro_df.to_csv('macro.csv', index=False, encoding='utf-8-sig')
@@ -96,7 +92,7 @@ def load_default_missing_data():
 def load_default_macro_data():
     return pd.read_csv('macro.csv', encoding='utf-8-sig')
 
-# 侧边栏
+# 侧边栏（中文界面）
 st.sidebar.header("⚙️ 控制面板")
 use_demo_data = st.sidebar.checkbox("使用示例数据", value=True)
 uploaded_file = st.sidebar.file_uploader("上传信贷数据 (CSV格式)", type=["csv"], help="请上传非空、UTF-8编码的CSV文件")
@@ -108,11 +104,11 @@ if st.sidebar.button("🔄 重新运行"):
     st.cache_data.clear()
     st.rerun()
 
-# 选项卡
+# 选项卡（中文）
 tab1, tab2, tab3, tab4 = st.tabs(["🔍 异常值识别", "🧩 缺失值填补", "📈 LSTM前瞻预测", "🔗 多源数据融合"])
 
 # ============================================================
-# Tab 1: 异常值识别
+# Tab 1: 异常值识别（图表标题为英文）
 # ============================================================
 with tab1:
     st.header("🔍 异常值识别 - 孤立森林算法")
@@ -148,19 +144,20 @@ with tab1:
     scaler = StandardScaler()
     scaled = scaler.fit_transform(features)
     iso_forest = IsolationForest(contamination=contamination, random_state=42)
-    df_out['异常标记'] = iso_forest.fit_predict(scaled)
-    outliers = df_out[df_out['异常标记'] == -1]
+    df_out['Anomaly Label'] = iso_forest.fit_predict(scaled)
+    outliers = df_out[df_out['Anomaly Label'] == -1]
     
+    # 图表：英文标题和标签
     fig, axes = plt.subplots(1, 2, figsize=(12, 4))
     axes[0].boxplot(df_out[feature_x].dropna(), patch_artist=True, boxprops=dict(facecolor='lightblue'))
-    axes[0].set_title(f'{feature_x} 箱线图')
+    axes[0].set_title(f'Boxplot of {feature_x}')
     
-    normal = df_out[df_out['异常标记'] == 1]
-    axes[1].scatter(normal[feature_x], normal[feature_y], c='blue', label='正常', alpha=0.6)
-    axes[1].scatter(outliers[feature_x], outliers[feature_y], c='red', label='异常', alpha=0.8, marker='x')
+    normal = df_out[df_out['Anomaly Label'] == 1]
+    axes[1].scatter(normal[feature_x], normal[feature_y], c='blue', label='Normal', alpha=0.6)
+    axes[1].scatter(outliers[feature_x], outliers[feature_y], c='red', label='Anomaly', alpha=0.8, marker='x')
     axes[1].set_xlabel(feature_x)
     axes[1].set_ylabel(feature_y)
-    axes[1].set_title(f'异常值分布 (敏感度={contamination})')
+    axes[1].set_title(f'Anomaly Distribution (contamination={contamination})')
     axes[1].legend()
     plt.tight_layout()
     
@@ -172,7 +169,7 @@ with tab1:
         st.pyplot(fig)
 
 # ============================================================
-# Tab 2: 缺失值填补
+# Tab 2: 缺失值填补（图表标题为英文）
 # ============================================================
 with tab2:
     st.header("🧩 缺失值填补 - 机器学习算法")
@@ -221,11 +218,12 @@ with tab2:
             test_copy[target_col] = model.predict(test[feature_cols])
             filled = pd.concat([train, test_copy]).sort_index()
     
+    # 图表：英文标题和标签
     fig, axes = plt.subplots(1, 2, figsize=(12, 4))
     axes[0].hist(train[target_col].dropna(), bins=30, alpha=0.7, color='blue', edgecolor='black')
-    axes[0].set_title(f'填补前 - {target_col}')
+    axes[0].set_title(f'Before Imputation - {target_col}')
     axes[1].hist(filled[target_col], bins=30, alpha=0.7, color='orange', edgecolor='black')
-    axes[1].set_title(f'填补后 - {fill_algorithm}')
+    axes[1].set_title(f'After Imputation - {fill_algorithm}')
     plt.tight_layout()
     
     col1, col2 = st.columns(2)
@@ -235,7 +233,7 @@ with tab2:
         st.pyplot(fig)
 
 # ============================================================
-# Tab 3: LSTM 预测（无 TensorFlow 版本）
+# Tab 3: LSTM 预测（界面中文，图表英文）
 # ============================================================
 with tab3:
     st.header("📈 LSTM时序预测")
@@ -268,12 +266,13 @@ with tab3:
         dates = pd.date_range('2020-01-01', periods=80, freq='MS')
         dates = dates[dates.month.isin([1,4,7,10])][:20]
     
+    # 英文列名（图表的轴标签会自动使用列名）
     example_data = pd.DataFrame({
-        '日期': dates[:20],
-        'GDP增长率': [3.2, 2.8, 3.5, 4.0, 3.8, 3.2, 2.9, 3.3, 3.6, 4.1, 3.9, 3.4, 3.1, 3.5, 3.8, 4.2, 4.0, 3.6, 3.3, 3.7][:20],
+        'Date': dates[:20],
+        'GDP Growth Rate': [3.2, 2.8, 3.5, 4.0, 3.8, 3.2, 2.9, 3.3, 3.6, 4.1, 3.9, 3.4, 3.1, 3.5, 3.8, 4.2, 4.0, 3.6, 3.3, 3.7][:20],
         'CPI': [2.1, 2.3, 2.0, 1.8, 2.2, 2.5, 2.7, 2.4, 2.1, 1.9, 2.3, 2.6, 2.8, 2.5, 2.2, 2.0, 2.4, 2.7, 2.9, 2.6][:20]
     })
-    st.line_chart(example_data.set_index('日期'))
+    st.line_chart(example_data.set_index('Date'))
     
     st.markdown("""
     ### 💡 使用方法
@@ -282,8 +281,8 @@ with tab3:
     3. LSTM模型将自动训练并预测
     
     ### 📁 数据格式示例
-    | 日期 | GDP增长率 | CPI |
-    |------|-----------|-----|
+    | Date | GDP Growth Rate | CPI |
+    |------|----------------|-----|
     | 2020-01-01 | 3.2 | 2.1 |
     
     ---
@@ -298,14 +297,14 @@ with tab3:
         forecast_dates = forecast_dates[forecast_dates.month.isin([1,4,7,10])][:8]
     
     forecast_data = pd.DataFrame({
-        '日期': forecast_dates,
-        '实际值': [3.5, 3.3, 3.6, 3.8, 3.7, 3.9, 4.0, 3.8],
-        '预测值': [3.5, 3.4, 3.5, 3.7, 3.8, 3.8, 3.9, 3.9]
+        'Date': forecast_dates,
+        'Actual': [3.5, 3.3, 3.6, 3.8, 3.7, 3.9, 4.0, 3.8],
+        'Forecast': [3.5, 3.4, 3.5, 3.7, 3.8, 3.8, 3.9, 3.9]
     })
-    st.line_chart(forecast_data.set_index('日期'))
+    st.line_chart(forecast_data.set_index('Date'))
 
 # ============================================================
-# Tab 4: 多源数据融合
+# Tab 4: 多源数据融合（界面中文，无图表）
 # ============================================================
 with tab4:
     st.header("🔗 多源数据融合")
@@ -334,24 +333,22 @@ with tab4:
             st.stop()
         
         try:
-            # 尝试按公共列合并
             common_cols = set(df1.columns) & set(df2.columns) & set(df3.columns)
-            if '客户ID' in common_cols:
-                merged = df1.merge(df2, on='客户ID', how='outer')
-                merged = merged.merge(df3, on='客户ID', how='outer')
+            if 'CustomerID' in common_cols:
+                merged = df1.merge(df2, on='CustomerID', how='outer')
+                merged = merged.merge(df3, on='CustomerID', how='outer')
                 st.info("🔗 按「客户ID」列合并")
-            elif '日期' in common_cols:
-                df1['日期'] = pd.to_datetime(df1['日期'])
-                df2['日期'] = pd.to_datetime(df2['日期'])
-                df3['日期'] = pd.to_datetime(df3['日期'])
-                merged = df1.merge(df2, on='日期', how='outer')
-                merged = merged.merge(df3, on='日期', how='outer')
+            elif 'Date' in common_cols:
+                df1['Date'] = pd.to_datetime(df1['Date'])
+                df2['Date'] = pd.to_datetime(df2['Date'])
+                df3['Date'] = pd.to_datetime(df3['Date'])
+                merged = df1.merge(df2, on='Date', how='outer')
+                merged = merged.merge(df3, on='Date', how='outer')
                 st.info("🔗 按「日期」列合并")
             else:
                 merged = pd.concat([df1, df2, df3], axis=1)
                 st.info("🔗 按列拼接合并")
             
-            # 填充缺失值
             numeric_cols = merged.select_dtypes(include=[np.number]).columns
             merged[numeric_cols] = merged[numeric_cols].fillna(merged[numeric_cols].median())
             
