@@ -100,11 +100,17 @@ if st.sidebar.button("🔄 重新运行"):
     st.cache_data.clear()
     st.rerun()
 
-# 选项卡
-tab1, tab2, tab3, tab4 = st.tabs(["🔍 异常值识别", "🧩 缺失值填补", "📈 LSTM前瞻预测", "🔗 多源数据融合"])
+# 选项卡：新增第5个 "客户信用评级"
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "🔍 异常值识别", 
+    "🧩 缺失值填补", 
+    "📈 LSTM前瞻预测", 
+    "🔗 多源数据融合",
+    "⭐ 客户信用评级"
+])
 
 # ============================================================
-# Tab 1: 异常值识别 + 导出功能
+# Tab 1: 异常值识别（保持原样）
 # ============================================================
 with tab1:
     st.header("🔍 异常值识别 - 孤立森林算法")
@@ -163,7 +169,7 @@ with tab1:
     with col2:
         st.pyplot(fig)
     
-    # ---------- 导出结果数据 ----------
+    # 导出
     st.markdown("---")
     st.subheader("📥 导出异常识别结果")
     csv_with_outliers = df_out.to_csv(index=False, encoding='utf-8-sig')
@@ -176,7 +182,7 @@ with tab1:
     )
 
 # ============================================================
-# Tab 2: 缺失值填补 + 导出功能
+# Tab 2: 缺失值填补（保持原样）
 # ============================================================
 with tab2:
     st.header("🧩 缺失值填补 - 机器学习算法")
@@ -200,7 +206,6 @@ with tab2:
     if len(missing_cols) == 0:
         st.success("✅ 数据中没有缺失值！")
         st.dataframe(df_miss.head())
-        # 即使没有缺失值，也允许导出原数据
         csv_no_missing = df_miss.to_csv(index=False, encoding='utf-8-sig')
         st.download_button("💾 下载当前数据 (CSV)", csv_no_missing, "无缺失值数据.csv", "text/csv")
         st.stop()
@@ -242,7 +247,6 @@ with tab2:
     with col2:
         st.pyplot(fig)
     
-    # ---------- 导出填补后的完整数据 ----------
     st.markdown("---")
     st.subheader("📥 导出填补结果")
     csv_filled = filled.to_csv(index=False, encoding='utf-8-sig')
@@ -255,7 +259,7 @@ with tab2:
     )
 
 # ============================================================
-# Tab 3: LSTM 预测（模拟） + 导出功能
+# Tab 3: LSTM预测（模拟，保持原样）
 # ============================================================
 with tab3:
     st.header("📈 LSTM时序预测")
@@ -323,7 +327,6 @@ with tab3:
     })
     st.line_chart(forecast_data.set_index('日期'))
     
-    # ---------- 导出模拟预测数据 ----------
     st.markdown("---")
     st.subheader("📥 导出LSTM预测结果")
     csv_forecast = forecast_data.to_csv(index=False, encoding='utf-8-sig')
@@ -336,7 +339,7 @@ with tab3:
     )
 
 # ============================================================
-# Tab 4: 多源数据融合（已有下载按钮，保持原样）
+# Tab 4: 多源数据融合（保持原样）
 # ============================================================
 with tab4:
     st.header("🔗 多源数据融合")
@@ -394,5 +397,138 @@ with tab4:
     else:
         st.info("📁 请上传3个CSV文件进行数据融合")
 
+# ============================================================
+# Tab 5: 客户信用评级（新增）
+# ============================================================
+with tab5:
+    st.header("⭐ 客户信用评级")
+    st.markdown("基于客户的风险指标（如违约概率）自动划分信用等级，支持自定义阈值。")
+    
+    # 加载数据（与异常值识别共用同一数据源）
+    if use_demo_data and not uploaded_file:
+        df_rating = load_default_outlier_data()
+        st.info("📊 使用示例数据（包含违约率、抵押品价值、信贷额度）")
+    else:
+        if uploaded_file is not None:
+            df_rating = safe_read_csv(uploaded_file, show_error=True)
+            if df_rating is None:
+                st.stop()
+            st.success(f"📊 已上传数据：{len(df_rating)} 行")
+        else:
+            st.warning("⚠️ 请上传数据文件或勾选「使用示例数据」")
+            st.stop()
+    
+    # 检查是否有违约率列，如果没有则提示
+    if '违约率' not in df_rating.columns:
+        st.error("❌ 当前数据中缺少「违约率」列，无法进行基于违约率的信用评级。请上传包含违约率字段的CSV文件，或使用示例数据。")
+        st.stop()
+    
+    # 处理缺失值
+    df_rating_clean = df_rating.copy()
+    if df_rating_clean['违约率'].isnull().any():
+        st.warning("⚠️ 违约率列存在缺失值，将使用中位数填充后评级")
+        df_rating_clean['违约率'] = df_rating_clean['违约率'].fillna(df_rating_clean['违约率'].median())
+    
+    # 用户自定义阈值（默认7档）
+    st.subheader("📏 评级阈值设置")
+    col1, col2 = st.columns(2)
+    with col1:
+        rating_method = st.radio("评级方法", ["基于违约率阈值", "基于违约率百分位排名"], index=0)
+    with col2:
+        num_grades = st.selectbox("等级数量", [5, 7, 10], index=1)  # 默认7级
+    
+    # 定义等级标签
+    if num_grades == 5:
+        grade_labels = ["AAA", "AA", "A", "BBB", "BB"]
+        default_thresholds = [0.02, 0.05, 0.10, 0.15]  # 低风险阈值
+    elif num_grades == 7:
+        grade_labels = ["AAA", "AA", "A", "BBB", "BB", "B", "CCC"]
+        default_thresholds = [0.01, 0.03, 0.06, 0.10, 0.15, 0.20]
+    else:  # 10级
+        grade_labels = ["AAA", "AA+", "AA", "AA-", "A+", "A", "A-", "BBB+", "BBB", "BBB-"]
+        default_thresholds = [0.005, 0.01, 0.02, 0.03, 0.05, 0.07, 0.10, 0.13, 0.17]
+    
+    if rating_method == "基于违约率阈值":
+        st.markdown("请调整各等级对应的违约概率上限（0~1之间）：")
+        thresholds = []
+        for i, label in enumerate(grade_labels[:-1]):
+            val = st.slider(f"{label} 级上限（低于此值为{label}）", 0.0, 0.5, default_thresholds[i], step=0.005, key=f"thresh_{i}")
+            thresholds.append(val)
+        # 确保阈值递增
+        thresholds = sorted(set(thresholds))
+        # 根据阈值分配等级
+        def assign_grade(pd_value):
+            for i, th in enumerate(thresholds):
+                if pd_value <= th:
+                    return grade_labels[i]
+            return grade_labels[-1]  # 超过所有阈值，归为最差等级
+        df_rating_clean['信用评级'] = df_rating_clean['违约率'].apply(assign_grade)
+        # 生成说明文字
+        thresh_desc = "、".join([f"{grade_labels[i]}≤{th}" for i, th in enumerate(thresholds)]) + f"，其余为{grade_labels[-1]}"
+        st.caption(f"当前阈值规则：{thresh_desc}")
+    
+    else:  # 基于百分位排名
+        st.markdown("按违约率从小到大排序，等频分箱。")
+        # 使用pandas的qcut等频分箱
+        try:
+            # 创建百分位等级
+            df_rating_clean['百分位排名'] = df_rating_clean['违约率'].rank(pct=True)
+            # 按百分位划分
+            labels = grade_labels
+            # 等频分箱
+            df_rating_clean['信用评级'] = pd.qcut(df_rating_clean['违约率'], q=num_grades, labels=labels, duplicates='drop')
+            # 如果因为重复值导致分箱数少于等级数，则降级提示
+            if df_rating_clean['信用评级'].nunique() < num_grades:
+                st.warning(f"⚠️ 数据中违约率重复值较多，实际只分出 {df_rating_clean['信用评级'].nunique()} 个等级，已自动调整。")
+        except Exception as e:
+            st.error(f"等频分箱失败：{e}，请尝试使用阈值法。")
+            st.stop()
+    
+    # 显示评级统计
+    st.subheader("📊 信用评级分布")
+    rating_counts = df_rating_clean['信用评级'].value_counts().sort_index()
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        fig, ax = plt.subplots(figsize=(8, 4))
+        rating_counts.plot(kind='bar', ax=ax, color='skyblue', edgecolor='black')
+        ax.set_title("各等级客户数量")
+        ax.set_xlabel("信用等级")
+        ax.set_ylabel("客户数")
+        plt.xticks(rotation=45)
+        st.pyplot(fig)
+    with col2:
+        fig2, ax2 = plt.subplots(figsize=(6, 6))
+        rating_counts.plot(kind='pie', ax=ax2, autopct='%1.1f%%', startangle=90, colormap='Blues')
+        ax2.set_ylabel("")
+        ax2.set_title("客户评级占比")
+        st.pyplot(fig2)
+    
+    st.subheader("📋 评级结果预览")
+    st.dataframe(df_rating_clean[['客户ID', '违约率', '信用评级']].head(10))
+    
+    # 可选项：将评级合并回原数据并导出
+    st.markdown("---")
+    st.subheader("📥 导出评级结果")
+    # 提供两种导出：仅评级列 + 完整数据带评级
+    export_option = st.radio("导出内容", ["完整数据（含信用评级）", "仅客户ID与信用评级"])
+    if export_option == "完整数据（含信用评级）":
+        export_df = df_rating_clean.copy()
+        file_name = "客户信用评级_完整数据.csv"
+    else:
+        export_df = df_rating_clean[['客户ID', '信用评级']].copy()
+        file_name = "客户信用评级_仅评级.csv"
+    csv_rating = export_df.to_csv(index=False, encoding='utf-8-sig')
+    st.download_button(
+        label="💾 下载信用评级数据",
+        data=csv_rating,
+        file_name=file_name,
+        mime="text/csv",
+        key="download_rating"
+    )
+    
+    # 附加说明
+    st.info("💡 提示：评级基于「违约率」字段计算。若需使用其他指标（如抵押品价值、负债收入比），可上传包含相应字段的数据后自定义阈值。")
+
 st.markdown("---")
-st.caption("📊 ECL模型数据处理实训二 · 交互式数据分析平台")
+st.caption("📊 ECL模型数据处理实训二 · 交互式数据分析平台（新增客户信用评级功能）")
